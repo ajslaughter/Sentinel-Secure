@@ -318,10 +318,10 @@ function Set-SecurityBaseline {
         BaselinePath    = $baselineInfo.Path
         AppliedSettings = $appliedSettings
         Success         = $overallSuccess -and
-            (@($firewallResults | Where-Object { $_.Status -eq 'Failed' }).Count -eq 0) -and
-            (-not $remoteDesktopResult -or $remoteDesktopResult.Status -ne 'Failed') -and
-            (-not $passwordPolicyResult -or $passwordPolicyResult.Status -ne 'Failed') -and
-            (-not $defenderResult -or $defenderResult.Status -ne 'Failed')
+            (($firewallResults | Where-Object { $_.Status -eq 'Applied' }).Count -gt 0) -and
+            (-not $remoteDesktopResult -or $remoteDesktopResult.Status -eq 'Applied') -and
+            (-not $passwordPolicyResult -or $passwordPolicyResult.Status -eq 'Applied') -and
+            (-not $defenderResult -or $defenderResult.Status -eq 'Applied')
     }
 
     if ($result.Success) {
