@@ -9,12 +9,25 @@
 
     PowerShellVersion = '5.1'
 
-    FunctionsToExport = @()
+    FunctionsToExport = @(
+        'Get-Inventory',
+        'Invoke-PatchScan',
+        'Set-SecurityBaseline',
+        'Watch-Health',
+        'Export-InventoryReport'
+    )
     CmdletsToExport   = @()
     AliasesToExport   = @()
     VariablesToExport = @()
 
-    FileList          = @('WinSysAuto.psm1')
+    FileList          = @(
+        'WinSysAuto.psm1',
+        'Functions/Get-Inventory.ps1',
+        'Functions/Invoke-PatchScan.ps1',
+        'Functions/Set-SecurityBaseline.ps1',
+        'Functions/Watch-Health.ps1',
+        'Functions/Export-InventoryReport.ps1'
+    )
 
     PrivateData       = @{}
 }

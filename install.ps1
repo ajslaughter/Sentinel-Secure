@@ -1,27 +1,22 @@
-[CmdletBinding(SupportsShouldProcess = $true)]
 param(
-    [ValidateSet('Auto', 'CurrentUser', 'AllUsers')]
-    [string]$Scope = 'Auto',
-    [switch]$Force
+    [string]$DestinationRoot = "$env:ProgramFiles\WindowsPowerShell\Modules"
 )
 
-Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
+$moduleName = 'WinSysAuto'
+$sourcePath = Split-Path -Parent $MyInvocation.MyCommand.Path
+$destinationPath = Join-Path -Path $DestinationRoot -ChildPath $moduleName
 
-function Test-IsAdministrator {
-    [CmdletBinding()]
-    param()
-    try {
-        $currentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
-        $principal = [Security.Principal.WindowsPrincipal]::new($currentIdentity)
-        return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    }
-    catch {
-        Write-Verbose "Failed to determine administrative status: $_"
-        return $false
-    }
+if (-not (Test-Path -Path $DestinationRoot)) {
+    New-Item -Path $DestinationRoot -ItemType Directory -Force | Out-Null
 }
 
+if (Test-Path -Path $destinationPath) {
+    Remove-Item -Path $destinationPath -Recurse -Force
+}
+
+Copy-Item -Path $sourcePath -Destination $destinationPath -Recurse -Force
+
+Write-Host "WinSysAuto installed to $destinationPath"
 function Resolve-ModuleRoot {
     [CmdletBinding()]
     param(

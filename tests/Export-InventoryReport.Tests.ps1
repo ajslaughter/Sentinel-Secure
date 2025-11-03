@@ -1,65 +1,30 @@
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Resolve-Path (Join-Path $here '..')
-$functionPath = Join-Path $repoRoot 'functions' 'Export-InventoryReport.ps1'
-. $functionPath
+Import-Module (Join-Path -Path $PSScriptRoot -ChildPath '..\WinSysAuto.psd1') -Force
 
 Describe 'Export-InventoryReport' {
-    $sampleInventory = @(
-        [pscustomobject]@{
-            Name = 'Server01'
-            OperatingSystem = 'Windows Server 2022'
-            Environment = 'Production'
-            Location = 'DataCenterA'
-            Status = 'Online'
-            Role = 'Hyper-V'
-            IPAddress = '10.0.0.10'
-        },
-        [pscustomobject]@{
-            Name = 'Server02'
-            OperatingSystem = 'Windows Server 2019'
-            Environment = 'Production'
-            Location = 'DataCenterB'
-            Status = 'Online'
-            Role = 'SQL'
-            IPAddress = '10.0.0.11'
-        },
-        [pscustomobject]@{
-            Name = 'Server03'
-            OperatingSystem = 'Windows Server 2019'
-            Environment = 'Development'
-            Location = 'DataCenterB'
-            Status = 'Maintenance'
-            Role = 'Web'
-            IPAddress = '10.0.0.12'
+    BeforeEach {
+        Mock -CommandName Get-Inventory -MockWith {
+            [pscustomobject]@{
+                ComputerName    = 'TestHost'
+                OperatingSystem = [pscustomobject]@{ Caption = 'Windows'; Version = '10'; BuildNumber = '19045' }
+                MemoryGB        = 8
+                Uptime          = [TimeSpan]::FromHours(12)
+                Processors      = @([pscustomobject]@{ Name = 'CPU'; NumberOfCores = 4; NumberOfLogicalProcessors = 8; MaxClockSpeedMHz = 3200 })
+                Disks           = @([pscustomobject]@{ Name = 'C:'; SizeGB = 100; FreeGB = 50; PercentFree = 50 })
+                Last5Patches    = @([pscustomobject]@{ HotFixID = 'KB1'; InstalledOn = (Get-Date); Description = 'Patch' })
+            }
         }
-    )
-
-    It 'creates an HTML report with expected sections' {
-        $outputFile = Join-Path $TestDrive 'inventory-report.html'
-        $result = $sampleInventory | Export-InventoryReport -OutputPath $outputFile -CompanyName 'Contoso'
-
-        $result | Should -Not -BeNullOrEmpty
-        Test-Path $outputFile | Should -BeTrue
-
-        $content = Get-Content -Path $outputFile -Raw
-        $content | Should -Match '<h2>Summary Statistics</h2>'
-        $content | Should -Match 'Inventory Detail'
-        $content | Should -Match 'Contoso Branding Placeholder'
-        $content | Should -Match 'Generated on '
-        $content | Should -Match '<table id=\'inventory-table\'>'
+        Mock -CommandName Test-Path -MockWith { $false }
+        Mock -CommandName New-Item
+        Mock -CommandName Set-Content
+        Mock -CommandName Get-Command -ParameterFilter { $Name -eq 'notepad.exe' } -MockWith { $null }
+        Mock -CommandName Write-Host
     }
 
-    It 'includes Chart.js visualization when supported data exists' {
-        $outputFile = Join-Path $TestDrive 'inventory-report-chart.html'
-        $sampleInventory | Export-InventoryReport -OutputPath $outputFile
-        $content = Get-Content -Path $outputFile -Raw
-
-        $content | Should -Match 'cdn.jsdelivr.net/npm/chart.js'
-        $content | Should -Match 'Inventory Distribution by OperatingSystem|Environment|Location|Status|Role'
-        $content | Should -Match 'new Chart\(ctx'
-    }
-
-    It 'throws when no inventory objects are provided' {
-        { @() | Export-InventoryReport -OutputPath (Join-Path $TestDrive 'empty.html') } | Should -Throw
+    It 'creates the report and returns the path' {
+        $path = Export-InventoryReport -ComputerName 'TestHost' -OutputDirectory 'C:\\Reports'
+        $path | Should -Be 'C:\\Reports\\TestHost-Inventory.html'
+        Assert-MockCalled -CommandName New-Item -Times 1
+        Assert-MockCalled -CommandName Set-Content -Times 1
+        Assert-MockCalled -CommandName Write-Host -Times 1
     }
 }
