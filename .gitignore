@@ -1,0 +1,9 @@
+# PowerShell build artefacts
+*.ps1xml
+*.nupkg
+*.nuspec
+*.pssc
+
+# General
+.DS_Store
+Thumbs.db
