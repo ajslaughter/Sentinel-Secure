@@ -76,7 +76,7 @@ function Get-FileHashTable {
 
     $hashes = @{}
     Get-ChildItem -Path $Path -File -Recurse | ForEach-Object {
-        $relative = $_.FullName.Substring($Path.Length).TrimStart('\\', '/')
+        $relative = $_.FullName.Substring($Path.Length).TrimStart('\', '/')
         $hashes[$relative] = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash
     }
     return $hashes

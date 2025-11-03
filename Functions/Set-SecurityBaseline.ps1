@@ -317,7 +317,8 @@ function Set-SecurityBaseline {
         BaselineVersion = $baselineInfo.Version
         BaselinePath    = $baselineInfo.Path
         AppliedSettings = $appliedSettings
-        Success         = $overallSuccess -and -not ($firewallResults | Where-Object { $_.Status -eq 'Failed' }) -and
+        Success         = $overallSuccess -and
+            (@($firewallResults | Where-Object { $_.Status -eq 'Failed' }).Count -eq 0) -and
             (-not $remoteDesktopResult -or $remoteDesktopResult.Status -ne 'Failed') -and
             (-not $passwordPolicyResult -or $passwordPolicyResult.Status -ne 'Failed') -and
             (-not $defenderResult -or $defenderResult.Status -ne 'Failed')
