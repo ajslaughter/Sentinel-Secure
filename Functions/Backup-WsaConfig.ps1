@@ -101,7 +101,8 @@ function Backup-WsaConfig {
             Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
         }
         catch {
-            Write-WsaLog -Component $component -Message "Failed to remove temp directory $tempDir: $($_.Exception.Message)" -Level 'WARN'
+            # FIXED: Wrapped $tempDir in ${} to avoid PowerShell misreading as drive path
+            Write-WsaLog -Component $component -Message "Failed to remove temp directory ${tempDir}: $($_.Exception.Message)" -Level 'WARN'
         }
     }
 

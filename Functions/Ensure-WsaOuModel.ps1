@@ -104,7 +104,8 @@ function Ensure-WsaOuModel {
                     Write-WsaLog -Component $component -Message "Created OU=$child,$rootOu."
                 }
                 catch {
-                    $msg = "Failed to create OU=$child: $($_.Exception.Message)"
+                    # FIXED: Wrapped $child in ${} to avoid PowerShell misreading as drive path
+                    $msg = "Failed to create OU=${child}: $($_.Exception.Message)"
                     Write-WsaLog -Component $component -Message $msg -Level 'ERROR'
                     $findings.Add($msg) | Out-Null
                 }
@@ -118,7 +119,8 @@ function Ensure-WsaOuModel {
                         $changes.Add("Enabled protection on OU=$child,$rootOu") | Out-Null
                     }
                     catch {
-                        $msg = "Failed to protect OU=$child: $($_.Exception.Message)"
+                        # FIXED: Wrapped $child in ${} to avoid PowerShell misreading as drive path
+                        $msg = "Failed to protect OU=${child}: $($_.Exception.Message)"
                         Write-WsaLog -Component $component -Message $msg -Level 'ERROR'
                         $findings.Add($msg) | Out-Null
                     }

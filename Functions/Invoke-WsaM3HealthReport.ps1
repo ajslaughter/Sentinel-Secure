@@ -954,7 +954,8 @@ function Save-WsaM3Artifacts {
 
     $metricRows = ''
     foreach ($row in $ReportData.MetricsRows) {
-        $metricRows += "<tr><td>$($row.Name)</td><td>$($row.Current)</td><td>$($row.PreviousDay)</td><td>$($row.PreviousWeek)</td><td class=\"$($row.StatusClass)\">$($row.StatusSymbol)</td></tr>"
+        # FIXED: Added backticks to escape inner quotes for class attribute
+        $metricRows += "<tr><td>$($row.Name)</td><td>$($row.Current)</td><td>$($row.PreviousDay)</td><td>$($row.PreviousWeek)</td><td class=`"$($row.StatusClass)`">$($row.StatusSymbol)</td></tr>"
     }
     $template = $template.Replace('{{METRIC_ROWS}}', $metricRows)
 
@@ -1098,16 +1099,32 @@ function Set-WsaM3ScheduledTask {
 
     $modulePath = Join-Path -Path $ModuleRoot -ChildPath 'WinSysAuto.psd1'
     $taskName = 'WinSysAuto-M3-Daily'
-    $command = "PowerShell.exe -NoProfile -WindowStyle Hidden -Command \"Import-Module '$modulePath'; Invoke-WsaM3HealthReport -RunNow\""
 
-    $arguments = @('/Create', '/SC', 'DAILY', '/TN', $taskName, '/TR', $command, '/F')
+    # FIXED: Rewritten to use New-ScheduledTaskAction instead of over-escaped schtasks.exe command
+    $commandScript = "Import-Module `'$modulePath`'; Invoke-WsaM3HealthReport -RunNow"
+    $action = New-ScheduledTaskAction -Execute 'PowerShell.exe' -Argument "-NoProfile -WindowStyle Hidden -Command `"$commandScript`""
+    $trigger = New-ScheduledTaskTrigger -Daily -At '9:00AM'
+    $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+
     if ($TestMode) {
-        return @{ Task = $taskName; Command = $command; Arguments = $arguments }
+        return @{ Task = $taskName; Action = $action; Trigger = $trigger }
     }
 
-    & schtasks.exe @arguments
-    Write-WsaLog -Component 'M3' -Message 'Scheduled task created or updated.' -Level 'INFO'
-    return @{ Task = $taskName; Command = $command }
+    try {
+        $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+        if ($task) {
+            Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction Stop
+        }
+        Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -ErrorAction Stop | Out-Null
+        Write-WsaLog -Component 'M3' -Message 'Scheduled task created or updated.' -Level 'INFO'
+    }
+    catch {
+        Write-WsaLog -Component 'M3' -Message "Failed to create scheduled task: $($_.Exception.Message)" -Level 'ERROR'
+        throw
+    }
+
+    return @{ Task = $taskName; Action = $action }
 }
 
 function Get-WsaM3HistoricalReport {

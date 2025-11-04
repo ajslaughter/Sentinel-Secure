@@ -80,7 +80,8 @@ function Ensure-WsaDnsForwarders {
                 Write-WsaLog -Component $component -Message "Added DNS forwarder $ip."
             }
             catch {
-                $msg = "Failed to add forwarder $ip: $($_.Exception.Message)"
+                # FIXED: Wrapped $ip in ${} to avoid PowerShell misreading as drive path
+                $msg = "Failed to add forwarder ${ip}: $($_.Exception.Message)"
                 Write-WsaLog -Component $component -Message $msg -Level 'ERROR'
                 $findings.Add($msg) | Out-Null
             }
@@ -95,7 +96,8 @@ function Ensure-WsaDnsForwarders {
                 Write-WsaLog -Component $component -Message "Removed DNS forwarder $ip."
             }
             catch {
-                $msg = "Failed to remove forwarder $ip: $($_.Exception.Message)"
+                # FIXED: Wrapped $ip in ${} to avoid PowerShell misreading as drive path
+                $msg = "Failed to remove forwarder ${ip}: $($_.Exception.Message)"
                 Write-WsaLog -Component $component -Message $msg -Level 'ERROR'
                 $findings.Add($msg) | Out-Null
             }

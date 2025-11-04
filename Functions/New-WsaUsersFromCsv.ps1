@@ -181,7 +181,8 @@ function New-WsaUsersFromCsv {
                 }
             }
             catch {
-                $msg = "Failed to ensure group $deptGroup: $($_.Exception.Message)"
+                # FIXED: Wrapped $deptGroup in ${} to avoid PowerShell misreading as drive path
+                $msg = "Failed to ensure group ${deptGroup}: $($_.Exception.Message)"
                 Write-WsaLog -Component $component -Message $msg -Level 'WARN'
                 $findings.Add($msg) | Out-Null
             }
@@ -199,7 +200,8 @@ function New-WsaUsersFromCsv {
                 }
             }
             catch {
-                $msg = "Failed to add $($record.SamAccountName) to $group: $($_.Exception.Message)"
+                # FIXED: Wrapped $group in ${} to avoid PowerShell misreading as drive path
+                $msg = "Failed to add $($record.SamAccountName) to ${group}: $($_.Exception.Message)"
                 Write-WsaLog -Component $component -Message $msg -Level 'WARN'
                 $findings.Add($msg) | Out-Null
             }
