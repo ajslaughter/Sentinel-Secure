@@ -1,0 +1,71 @@
+metadata:
+  profile: "server"
+  interval_minutes: 1440
+  history_days: 30
+  baseline_days: 3
+logging:
+  path: "%ProgramData%/WinSysAuto/Logs/m3-monitor.log"
+  level: "Information"
+reports:
+  output_path: "%ProgramData%/WinSysAuto/Reports"
+  html_template: "../templates/report_template.html"
+  include_json: true
+  include_csv: true
+  security_summary_days: 7
+  retain_reports: 30
+services:
+  critical:
+    - "LanmanServer"
+    - "LanmanWorkstation"
+    - "Dhcp"
+    - "DNS"
+    - "EventLog"
+  monitor_windows_update: true
+  monitor_windows_defender: true
+  monitor_pending_reboot: true
+  monitor_firewall: true
+thresholds:
+  cpu:
+    warning: 75
+    critical: 90
+  memory:
+    warning: 80
+    critical: 95
+  disk:
+    warning: 80
+    critical: 95
+  network_bytes_total:
+    warning: 10737418240  # 10 GiB
+    critical: 21474836480 # 20 GiB
+  failed_logons:
+    warning: 10
+    critical: 25
+  service_failures:
+    warning: 1
+    critical: 3
+email:
+  enabled: false
+  smtp_server: "mail.example.com"
+  smtp_port: 25
+  use_ssl: false
+  from: "winsysauto@example.com"
+  to:
+    - "admin@example.com"
+  subject: "Daily Health Report"
+  credential_target: "WinSysAuto/M3/SMTP"
+trend_analysis:
+  enable: true
+  disk_growth_threshold_gb: 5
+  memory_growth_threshold_percent: 15
+  cpu_growth_threshold_percent: 20
+  lookback_days: 7
+counters:
+  enable_perf_counters: true
+  include:
+    - "\\Processor(_Total)\\% Processor Time"
+    - "\\Memory\\Available MBytes"
+    - "\\LogicalDisk(_Total)\\% Free Space"
+    - "\\Network Interface(*)\\Bytes Total/sec"
+retention:
+  snapshots: 30
+  baselines: 5

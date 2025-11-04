@@ -15,7 +15,8 @@ $publicFunctions = @(
     'Ensure-WsaDriveMappings',
     'Invoke-WsaSecurityBaseline',
     'Start-WsaDailyReport',
-    'Backup-WsaConfig'
+    'Backup-WsaConfig',
+    'Invoke-WsaM3HealthReport'
 )
 
 Export-ModuleMember -Function $publicFunctions

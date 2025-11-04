@@ -11,7 +11,8 @@ $expectedFunctions = @(
     'Ensure-WsaDriveMappings',
     'Invoke-WsaSecurityBaseline',
     'Start-WsaDailyReport',
-    'Backup-WsaConfig'
+    'Backup-WsaConfig',
+    'Invoke-WsaM3HealthReport'
 )
 
 Describe 'WinSysAuto module' {
@@ -35,5 +36,23 @@ Describe 'WinSysAuto module' {
         $result | Should -BeOfType 'System.Management.Automation.PSCustomObject'
         $result.PSObject.Properties.Name | Should -Contain 'Status'
         $result.PSObject.Properties.Name | Should -Contain 'Findings'
+    }
+
+    It 'creates a test snapshot with Invoke-WsaM3HealthReport -TestMode' {
+        $result = Invoke-WsaM3HealthReport -RunNow -TestMode
+        $result | Should -BeOfType 'System.Management.Automation.PSCustomObject'
+        $result.Metrics.CpuTotal | Should -BeGreaterThan 0
+        $result.Services.Services.Count | Should -BeGreaterThan 0
+        $result.Analysis.HealthScore | Should -BeGreaterThan 0
+    }
+
+    It 'parses the default configuration file correctly' {
+        $moduleRoot = Split-Path -Parent $PSCommandPath
+        $resourceRoot = Join-Path -Path $moduleRoot -ChildPath '..\M3_automation_monitoring'
+        $configPath = Join-Path -Path $resourceRoot -ChildPath 'config\default_config.yaml'
+        $config = Get-WsaM3Configuration -Path $configPath -ResourceRoot $resourceRoot
+        $config | Should -Not -BeNullOrEmpty
+        $config.thresholds.cpu.critical | Should -Be 90
+        $config.services.critical | Should -Contain 'LanmanServer'
     }
 }
