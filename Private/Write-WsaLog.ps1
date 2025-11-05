@@ -1,4 +1,27 @@
 function Write-WsaLog {
+    <#
+    .SYNOPSIS
+        Writes a structured log entry to the WinSysAuto log file.
+
+    .DESCRIPTION
+        Creates JSON-formatted log entries with timestamp, level, component, and message.
+        Uses the log path from Get-WsaConfig or falls back to a default location.
+
+    .PARAMETER Component
+        The component or function name generating the log entry.
+
+    .PARAMETER Message
+        The log message to write.
+
+    .PARAMETER Level
+        The severity level: INFO, WARN, ERROR, or DEBUG.
+
+    .EXAMPLE
+        Write-WsaLog -Component 'MyFunction' -Message 'Starting operation' -Level 'INFO'
+
+    .NOTES
+        Logs are written to $env:ProgramData\WinSysAuto\Logs by default.
+    #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -12,13 +35,18 @@ function Write-WsaLog {
     )
 
     try {
-        $logRoot = 'C:\LabReports\WinSysAuto'
+        # Get log path from config
+        $config = Get-WsaConfig
+        $logRoot = $config.paths.logs
+
+        # Ensure log directory exists
         if (-not (Test-Path -Path $logRoot)) {
             New-Item -Path $logRoot -ItemType Directory -Force | Out-Null
         }
 
         $dateStamp = Get-Date -Format 'yyyyMMdd'
         $logFile = Join-Path -Path $logRoot -ChildPath ("WinSysAuto-{0}.log" -f $dateStamp)
+
         $entry = [pscustomobject]@{
             Timestamp = (Get-Date).ToString('s')
             Level     = $Level

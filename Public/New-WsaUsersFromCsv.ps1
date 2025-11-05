@@ -5,24 +5,40 @@ function New-WsaUsersFromCsv {
 
     .DESCRIPTION
         Reads user definitions from a CSV file and ensures each account exists within the
-        departmental OU tree. Optional behaviours include creating missing security
+        specified OU structure. Optional behaviors include creating missing security
         groups, resetting passwords, and adding group memberships. Existing accounts are
         updated safely without duplication.
 
+        CSV Format:
+        - GivenName: User's first name
+        - Surname: User's last name
+        - SamAccountName: Username (required)
+        - Department: Department name (optional, used for auto-grouping)
+        - OU: Full distinguished name of target OU (optional)
+        - Password: Initial password (optional)
+        - Groups: Semicolon-separated list of group names (optional)
+
     .PARAMETER Path
-        Path to the CSV file. Columns: GivenName,Surname,SamAccountName,Department,OU,
-        Password,Groups.
+        Path to the CSV file.
 
     .PARAMETER AutoCreateGroups
-        Creates security groups named SG_<Department> within OU=Departments when missing.
+        Creates security groups named SG_<Department> when missing.
 
     .PARAMETER ResetPasswordIfProvided
         Resets the password for existing users when a Password column value is supplied.
+
+    .PARAMETER DefaultOU
+        Default OU for users if not specified in CSV. If not provided, uses CN=Users,<domain>.
 
     .EXAMPLE
         New-WsaUsersFromCsv -Path .\users.csv -AutoCreateGroups -Verbose
 
         Imports users from the CSV and ensures required groups exist.
+
+    .EXAMPLE
+        New-WsaUsersFromCsv -Path .\users.csv -DefaultOU "OU=Employees,DC=contoso,DC=com"
+
+        Imports users into a specific OU.
 
     .OUTPUTS
         PSCustomObject
@@ -35,7 +51,9 @@ function New-WsaUsersFromCsv {
 
         [switch]$AutoCreateGroups,
 
-        [switch]$ResetPasswordIfProvided
+        [switch]$ResetPasswordIfProvided,
+
+        [string]$DefaultOU
     )
 
     $component = 'New-WsaUsersFromCsv'
@@ -56,6 +74,11 @@ function New-WsaUsersFromCsv {
         throw $message
     }
 
+    # Set default OU if not specified
+    if (-not $DefaultOU) {
+        $DefaultOU = "CN=Users,$($domain.DistinguishedName)"
+    }
+
     $changes  = New-Object System.Collections.Generic.List[object]
     $findings = New-Object System.Collections.Generic.List[object]
     $results  = New-Object System.Collections.Generic.List[object]
@@ -71,15 +94,35 @@ function New-WsaUsersFromCsv {
             continue
         }
 
-        $targetOu = if ([string]::IsNullOrWhiteSpace($record.OU)) {
-            "OU=$($record.Department),OU=Departments,$($domain.DistinguishedName)"
-        } else {
+        # Determine target OU
+        $targetOu = if (-not [string]::IsNullOrWhiteSpace($record.OU)) {
             $record.OU
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($record.Department)) {
+            # Try department-based OU, fall back to default
+            $deptOU = "OU=$($record.Department),OU=Departments,$($domain.DistinguishedName)"
+            # Check if this OU exists
+            try {
+                $ouTest = Get-ADOrganizationalUnit -Identity $deptOU -ErrorAction SilentlyContinue
+                if ($ouTest) {
+                    $deptOU
+                }
+                else {
+                    $DefaultOU
+                }
+            }
+            catch {
+                $DefaultOU
+            }
+        }
+        else {
+            $DefaultOU
         }
 
         $userPrincipalName = "$($record.SamAccountName)@$($domain.DNSRoot)"
         $displayName = "$($record.GivenName) $($record.Surname)".Trim()
 
+        # Verify OU exists
         try {
             $ouExists = Get-ADOrganizationalUnit -Identity $targetOu -ErrorAction SilentlyContinue
         }
@@ -92,6 +135,7 @@ function New-WsaUsersFromCsv {
             continue
         }
 
+        # Check if user exists
         try {
             $existingUser = Get-ADUser -Identity $record.SamAccountName -ErrorAction SilentlyContinue
         }
@@ -104,7 +148,7 @@ function New-WsaUsersFromCsv {
         if ($shouldCreate) {
             if ($PSCmdlet.ShouldProcess($record.SamAccountName, 'Create user account', 'Create AD user')) {
                 try {
-                    $params = @{ 
+                    $params = @{
                         Name               = $displayName
                         SamAccountName     = $record.SamAccountName
                         GivenName          = $record.GivenName
@@ -113,7 +157,11 @@ function New-WsaUsersFromCsv {
                         UserPrincipalName  = $userPrincipalName
                         Path               = $targetOu
                         Enabled            = $true
-                        AccountPassword    = if ($record.Password) { (ConvertTo-SecureString -String $record.Password -AsPlainText -Force) } else { (ConvertTo-SecureString -String ([guid]::NewGuid().ToString()) -AsPlainText -Force) }
+                        AccountPassword    = if ($record.Password) {
+                            (ConvertTo-SecureString -String $record.Password -AsPlainText -Force)
+                        } else {
+                            (ConvertTo-SecureString -String ([guid]::NewGuid().ToString()) -AsPlainText -Force)
+                        }
                     }
                     New-ADUser @params
                     Enable-ADAccount -Identity $record.SamAccountName -ErrorAction Stop
@@ -172,16 +220,23 @@ function New-WsaUsersFromCsv {
             }
 
             try {
-                $groupDn = "CN=$deptGroup,OU=Departments,$($domain.DistinguishedName)"
                 $existingGroup = Get-ADGroup -Identity $deptGroup -ErrorAction SilentlyContinue
-                if (-not $existingGroup -and $PSCmdlet.ShouldProcess($deptGroup, 'Create security group', 'Create group')) {
-                    New-ADGroup -Name $deptGroup -GroupScope Global -GroupCategory Security -Path "OU=Departments,$($domain.DistinguishedName)" -SamAccountName $deptGroup -ErrorAction Stop | Out-Null
-                    $changes.Add("Created group $deptGroup") | Out-Null
-                    Write-WsaLog -Component $component -Message "Created group $deptGroup."
+                if (-not $existingGroup) {
+                    # Try to create in Departments OU, fall back to Users container
+                    $groupPath = "OU=Departments,$($domain.DistinguishedName)"
+                    $groupPathExists = Get-ADOrganizationalUnit -Identity $groupPath -ErrorAction SilentlyContinue
+                    if (-not $groupPathExists) {
+                        $groupPath = "CN=Users,$($domain.DistinguishedName)"
+                    }
+
+                    if ($PSCmdlet.ShouldProcess($deptGroup, 'Create security group', 'Create group')) {
+                        New-ADGroup -Name $deptGroup -GroupScope Global -GroupCategory Security -Path $groupPath -SamAccountName $deptGroup -ErrorAction Stop | Out-Null
+                        $changes.Add("Created group $deptGroup") | Out-Null
+                        Write-WsaLog -Component $component -Message "Created group $deptGroup."
+                    }
                 }
             }
             catch {
-                # FIXED: Wrapped $deptGroup in ${} to avoid PowerShell misreading as drive path
                 $msg = "Failed to ensure group ${deptGroup}: $($_.Exception.Message)"
                 Write-WsaLog -Component $component -Message $msg -Level 'WARN'
                 $findings.Add($msg) | Out-Null
@@ -200,7 +255,6 @@ function New-WsaUsersFromCsv {
                 }
             }
             catch {
-                # FIXED: Wrapped $group in ${} to avoid PowerShell misreading as drive path
                 $msg = "Failed to add $($record.SamAccountName) to ${group}: $($_.Exception.Message)"
                 Write-WsaLog -Component $component -Message $msg -Level 'WARN'
                 $findings.Add($msg) | Out-Null

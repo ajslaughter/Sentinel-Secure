@@ -1,1 +1,0 @@
-"""Collector documentation placeholders."""
