@@ -1,2 +1,0 @@
-# Intentionally left blank.  The M3 automation workflow relies solely on native
-# Windows PowerShell cmdlets and does not require additional Python packages.
