@@ -614,6 +614,27 @@ function Start-WsaDashboard {
                         }
                     }
                 }
+                elseif ($request.HttpMethod -eq 'GET' -and $request.Url.AbsolutePath -ieq '/style.css') {
+                    # Serve style.css
+                    try {
+                        $cssPath = Join-Path -Path $dashboardRoot -ChildPath 'style.css'
+                        if (Test-Path -Path $cssPath) {
+                            $css = Get-Content -Path $cssPath -Raw -Encoding UTF8
+                        } else {
+                            $css = '/* missing style.css */'
+                        }
+                        $bytes = [System.Text.Encoding]::UTF8.GetBytes($css)
+                        $response.ContentType = 'text/css; charset=utf-8'
+                        $response.Headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+                        $response.OutputStream.Write($bytes, 0, $bytes.Length)
+                        $response.StatusCode = 200
+                    } catch {
+                        $msg = "/* " + $_.Exception.Message + " */"
+                        $bytes = [System.Text.Encoding]::UTF8.GetBytes($msg)
+                        $response.StatusCode = 500
+                        $response.OutputStream.Write($bytes, 0, $bytes.Length)
+                    }
+                }
                 else {
                     # 404 Not Found
                     $response.StatusCode = 404
