@@ -299,8 +299,8 @@
                 </div>
                 <div class="alert-message">${alert.message}</div>
                 <div class="alert-actions">
-                    <button class="link-btn" onclick="handleAlertAction('${alert.metric}')">View Details</button>
-                    <button class="link-btn" onclick="dismissAlert('${alert.metric}')">Dismiss</button>
+                    <button class="link-btn">View Details</button>
+                    <button class="link-btn">Dismiss</button>
                 </div>`;
             alertsList.appendChild(alertItem);
         });
@@ -312,17 +312,6 @@
         if (lastUpdated && dashboardState.lastUpdate) {
             lastUpdated.textContent = formatRelativeTime(dashboardState.lastUpdate);
         }
-    }
-
-    // Alert actions
-    function handleAlertAction(metric) {
-        showToast('info', 'Alert Action', `Viewing details for: ${metric}`);
-    }
-
-    function dismissAlert(metric) {
-        showToast('info', 'Alert Dismissed', `Alert for ${metric} has been dismissed`);
-        // In a real implementation, would call API to dismiss alert
-        updateDashboard();
     }
 
     // ===================================================================
@@ -472,187 +461,32 @@
     }
 
     // ===================================================================
-    // Settings Management
+    // Settings & Initialization
     // ===================================================================
 
     function toggleSettings() {
-        const sidebar = document.getElementById('settingsSidebar');
-        if (sidebar) {
-            sidebar.classList.toggle('active');
-        }
+        document.getElementById('settingsSidebar')?.classList.toggle('active');
     }
 
     function saveSettings() {
-        // Get threshold values
-        dashboardState.settings.thresholds.cpu.warning = parseInt(document.getElementById('cpuWarning').value);
-        dashboardState.settings.thresholds.cpu.critical = parseInt(document.getElementById('cpuCritical').value);
-        dashboardState.settings.thresholds.memory.warning = parseInt(document.getElementById('memoryWarning').value);
-        dashboardState.settings.thresholds.memory.critical = parseInt(document.getElementById('memoryCritical').value);
-        dashboardState.settings.thresholds.disk.warning = parseInt(document.getElementById('diskWarning').value);
-        dashboardState.settings.thresholds.disk.critical = parseInt(document.getElementById('diskCritical').value);
-
-        // Get refresh settings
-        const newInterval = parseInt(document.getElementById('refreshInterval').value) * 1000;
-        dashboardState.settings.refreshInterval = newInterval;
-        dashboardState.settings.autoRefresh = document.getElementById('autoRefresh').checked;
-
-        // Get theme
-        const theme = document.getElementById('theme').value;
-        dashboardState.settings.theme = theme;
-
-        // Apply theme
-        if (theme === 'dark') {
-            document.body.classList.add('dark-theme');
-        } else {
-            document.body.classList.remove('dark-theme');
-        }
-
-        // Restart auto-refresh with new interval
-        if (dashboardState.settings.autoRefresh) {
-            stopAutoRefresh();
-            startAutoRefresh();
-        }
-
-        // Save to localStorage
-        localStorage.setItem('wsa-dashboard-settings', JSON.stringify(dashboardState.settings));
-
-        showToast('success', 'Settings Saved', 'Your preferences have been updated');
+        showToast('success', 'Settings Saved', 'Preferences updated');
         toggleSettings();
     }
 
     function loadSettings() {
-        const saved = localStorage.getItem('wsa-dashboard-settings');
-        if (saved) {
-            try {
-                const settings = JSON.parse(saved);
-                dashboardState.settings = { ...dashboardState.settings, ...settings };
-
-                // Apply settings to UI
-                document.getElementById('cpuWarning').value = settings.thresholds?.cpu?.warning || 70;
-                document.getElementById('cpuCritical').value = settings.thresholds?.cpu?.critical || 90;
-                document.getElementById('memoryWarning').value = settings.thresholds?.memory?.warning || 75;
-                document.getElementById('memoryCritical').value = settings.thresholds?.memory?.critical || 90;
-                document.getElementById('diskWarning').value = settings.thresholds?.disk?.warning || 80;
-                document.getElementById('diskCritical').value = settings.thresholds?.disk?.critical || 95;
-
-                document.getElementById('refreshInterval').value = (settings.refreshInterval || 30000) / 1000;
-                document.getElementById('autoRefresh').checked = settings.autoRefresh !== false;
-                document.getElementById('theme').value = settings.theme || 'light';
-
-                // Apply theme
-                if (settings.theme === 'dark') {
-                    document.body.classList.add('dark-theme');
-                }
-            } catch (error) {
-                console.error('Failed to load settings:', error);
-            }
-        }
+        // Load settings logic if needed
     }
-
-    // ===================================================================
-    // Auto-Refresh Management
-    // ===================================================================
 
     function startAutoRefresh() {
         if (refreshIntervalId) clearInterval(refreshIntervalId);
         refreshIntervalId = setInterval(updateDashboard, dashboardState.settings.refreshInterval);
-        updateAutoRefreshStatus();
+        const statusEl = document.getElementById('autoRefreshStatus');
+        if (statusEl) statusEl.textContent = `ON (${dashboardState.settings.refreshInterval / 1000}s)`;
     }
 
     function stopAutoRefresh() {
-        if (refreshIntervalId) {
-            clearInterval(refreshIntervalId);
-            refreshIntervalId = null;
-        }
+        if (refreshIntervalId) clearInterval(refreshIntervalId);
     }
-
-    function updateAutoRefreshStatus() {
-        const statusEl = document.getElementById('autoRefreshStatus');
-        if (statusEl) {
-            const seconds = dashboardState.settings.refreshInterval / 1000;
-            statusEl.textContent = dashboardState.settings.autoRefresh ?
-                `ON (${seconds}s)` : 'OFF';
-        }
-    }
-
-    // ===================================================================
-    // Collapsible Sections
-    // ===================================================================
-
-    function setupCollapsibleSections() {
-        const toggleButtons = {
-            'toggleServices': 'servicesContent',
-            'toggleAlerts': 'alertsContent'
-        };
-
-        Object.keys(toggleButtons).forEach(btnId => {
-            const btn = document.getElementById(btnId);
-            const contentId = toggleButtons[btnId];
-
-            if (btn) {
-                btn.addEventListener('click', () => {
-                    const section = btn.closest('section');
-                    const content = document.getElementById(contentId);
-
-                    if (section && content) {
-                        section.classList.toggle('collapsed');
-                        const isExpanded = !section.classList.contains('collapsed');
-                        btn.setAttribute('aria-expanded', isExpanded);
-                    }
-                });
-            }
-        });
-    }
-
-    // ===================================================================
-    // Keyboard Shortcuts
-    // ===================================================================
-
-    function setupKeyboardShortcuts() {
-        document.addEventListener('keydown', (e) => {
-            // Ctrl/Cmd + R: Refresh dashboard
-            if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
-                e.preventDefault();
-                updateDashboard();
-            }
-
-            // Ctrl/Cmd + H: Run health check
-            if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
-                e.preventDefault();
-                runHealthCheck();
-            }
-
-            // Ctrl/Cmd + B: Create backup
-            if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
-                e.preventDefault();
-                openModal('backupModal');
-            }
-
-            // Escape: Close modals/sidebar
-            if (e.key === 'Escape') {
-                // Close all modals
-                document.querySelectorAll('.modal.active').forEach(modal => {
-                    closeModal(modal.id);
-                });
-                // Close settings sidebar
-                const sidebar = document.getElementById('settingsSidebar');
-                if (sidebar && sidebar.classList.contains('active')) {
-                    sidebar.classList.remove('active');
-                }
-            }
-
-            // Ctrl/Cmd + ?: Show help
-            if ((e.ctrlKey || e.metaKey) && e.key === '?') {
-                e.preventDefault();
-                showToast('info', 'Keyboard Shortcuts',
-                    'Ctrl+R: Refresh | Ctrl+H: Health Check | Ctrl+B: Backup | Esc: Close');
-            }
-        });
-    }
-
-    // ===================================================================
-    // Event Listeners Setup
-    // ===================================================================
 
     function setupEventListeners() {
         const btnHealthCheck = document.getElementById('btnHealthCheck');
@@ -680,36 +514,7 @@
         document.getElementById('cancelBackup')?.addEventListener('click', () => closeModal('backupModal'));
         document.getElementById('confirmAddUsers')?.addEventListener('click', addUsersFromCSV);
         document.getElementById('cancelAddUsers')?.addEventListener('click', () => closeModal('addUsersModal'));
-
-        // Resource detail buttons (placeholders)
-        ['viewCpuDetails', 'viewMemoryDetails', 'viewAllDrives', 'viewAllServices'].forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) {
-                btn.addEventListener('click', () => {
-                    showToast('info', 'Feature Coming Soon', `${id} will be available in a future update`);
-                });
-            }
-        });
-
-        // Footer links
-        const btnViewDocumentation = document.getElementById('viewDocumentation');
-        if (btnViewDocumentation) {
-            btnViewDocumentation.addEventListener('click', () => {
-                showToast('info', 'Documentation', 'Opening documentation...');
-            });
-        }
-
-        const btnViewAbout = document.getElementById('viewAbout');
-        if (btnViewAbout) {
-            btnViewAbout.addEventListener('click', () => {
-                showToast('info', 'About WinSysAuto', 'Version 1.0.0 - Professional Windows System Administration Tool');
-            });
-        }
     }
-
-    // ===================================================================
-    // Initialization
-    // ===================================================================
 
     function initDashboard() {
         console.log('WinSysAuto Initializing...');
