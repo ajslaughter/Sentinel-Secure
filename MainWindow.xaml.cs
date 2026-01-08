@@ -8,7 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using ModernWpf.Controls;
 
-namespace TitanCheck
+namespace SentinelField
 {
     public partial class MainWindow : Window, INotifyPropertyChanged
     {

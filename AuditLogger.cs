@@ -2,7 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Windows.Data;
 
-namespace TitanCheck
+namespace SentinelField
 {
     public class AuditLogEntry
     {

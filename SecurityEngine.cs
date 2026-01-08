@@ -6,7 +6,7 @@ using Microsoft.Win32;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace TitanCheck
+namespace SentinelField
 {
     public static class SecurityEngine
     {
@@ -263,6 +263,47 @@ namespace TitanCheck
             if (CheckCredentialGuard()) score++;
 
             return (int)((double)score / totalChecks * 100);
+        }
+
+        public static List<string> AuditFieldCompliance()
+        {
+            var issues = new List<string>();
+            try
+            {
+                // check 1: Screen Saver Password Enable
+                using (var key = Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop"))
+                {
+                    if (key != null)
+                    {
+                        var val = key.GetValue("ScreenSaverIsSecure");
+                         if (val == null || val.ToString() != "1") issues.Add("Screen Saver Password Protection is DISABLED.");
+                         
+                         var timeout = key.GetValue("ScreenSaveTimeOut"); // Seconds
+                         if (timeout != null && int.TryParse(timeout.ToString(), out int seconds))
+                         {
+                             if (seconds > 900) issues.Add($"Screen Lock Timeout is too long ({seconds/60} mins). Max allowed: 15 mins.");
+                         }
+                         else issues.Add("Screen Lock Timeout not set.");
+                    }
+                }
+
+                // check 2: Removable Storage Write Protect (Machine)
+                using (var key = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\StorageDevicePolicies"))
+                {
+                    if (key != null)
+                    {
+                         var val = key.GetValue("WriteProtect");
+                         if (val == null || (int)val != 1) issues.Add("USB Write Protection is DISABLED.");
+                    }
+                     else issues.Add("USB Write Protection is DISABLED (Key missing).");
+                }
+            }
+            catch (Exception ex)
+            {
+                AuditLogger.Log($"Field Compliance Audit Error: {ex.Message}", "ERROR");
+                issues.Add("Error running field compliance checks.");
+            }
+            return issues;
         }
 
         // --- Hardening Actions ---

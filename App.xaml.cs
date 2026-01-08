@@ -2,7 +2,7 @@ using System.Windows;
 using System.Security.Principal;
 using System.Diagnostics;
 
-namespace TitanCheck
+namespace SentinelField
 {
     public partial class App : Application
     {
