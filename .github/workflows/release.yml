@@ -1,7 +1,7 @@
 name: Build and Release SentinelField
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main" ] # Ensure this matches your default branch name
 permissions:
   contents: write
 jobs:
@@ -14,6 +14,7 @@ jobs:
       with:
         dotnet-version: 8.0.x
     - name: Publish Standalone Binary
+      # This command packs everything into ONE file
       run: dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:PublishTrimmed=true /p:PublishReadyToRun=true -o ./publish
     - name: Create Release
       uses: softprops/action-gh-release@v1
