@@ -1,59 +1,63 @@
 # SentinelField Security Auditor
 
-**SentinelField** is a portable, single-file security auditing tool designed for Systems Analysts operating in air-gapped or low-connectivity environments (Data Centers, Construction Sites, Field Commissioning). 
+## Executive Summary
 
-It replaces completely the legacy "WinSysAuto" script collection with a high-performance, native .NET 8 executable that requires **zero cloud dependencies**.
+SentinelField is a high-performance, native Windows security auditing and system hardening utility engineered for mission-critical field operations. It serves as a standalone, single-file executable designed to provide immediate security posture assessments and remediation in air-gapped environments where zero cloud dependency is a strict requirement. The application ensures compliance with rigorous security baselines while maintaining a minimal operational footprint.
 
-## 🚀 Mission: The "Anti-Slop" Standard
+## Core Capabilities
 
-Modern tools like Procore or CxAlloy are bloated and cloud-dependent. When you are standing in a server room with no cellular signal, you need a tool that works **instantly**. 
+### Security Hardening Engine
+The core of SentinelField is an automated auditing engine designed to detect and remediate critical system vulnerabilities. It performs real-time verification of:
+- **Protocol Security**: Identification and disabling of deprecated protocols, specifically SMBv1 and RDP indiscriminately exposed services.
+- **Account Management**: Verification of Guest account status and automated logic to ensure disablement.
+- **LSA Protection**: Enforcement of Local Security Authority (LSA) protection to mitigate credential dumping attacks.
+- **Authentication Policies**: Audit of AutoLogon configurations to prevent unauthorized physical access.
 
-**SentinelField** provides:
-- **Instant Auditing**: Launch and scan in < 2 seconds.
-- **Single-File Zero-Install**: No MSI, no "npm install", no DLL hell. Just one `.exe`.
-- **Admin-Aware**: Automatically enforces elevated privileges for deep system access.
+### Network Sentry
+SentinelField bypasses high-level abstractions to perform low-level network analysis. Utilizing native system calls (`GetExtendedTcpTable`), the Network Sentry module maps active TCP/UDP connections directly to their associated Process IDs (PIDs) and executable names. This capability allows analysts to immediately identify unauthorized listeners or outbound beacons without reliance on external firewalls.
 
-## 🛡️ Key Capabilities
+### Field Compliance Module
+Tailored for physical security requirements, this module audits local data-protection flags essential for field assets:
+- **Data Exfiltration Control**: Verification of USB Write Protection policies to prevent unauthorized data transfer.
+- **Session Security**: Auditing of Screen Lock Timeout thresholds to ensure unattended workstations are secured within compliant timeframes.
 
-### 1. Dashboard Hub
-- **Radial Hardening Score**: Immediate 0-100% security posture visualization.
-- **Hardware ID**: Instant access to BIOS Serial, TPM Status, and BitLocker state for asset tagging.
+### Hardware Inventory
+The application provides rapid, non-invasive retrieval of critical hardware identity and security states, including:
+- **Asset Identity**: BIOS Serial Number extraction.
+- **Platform Integrity**: Trusted Platform Module (TPM) 2.0 status verification.
+- **Data-at-Rest Encryption**: BitLocker drive encryption status reporting.
 
-### 2. Hardening Shield (One-Click Lockdown)
-Automated checks and remediation for:
-- **RDP & SMBv1**: Detect and kill legacy protocols.
-- **Credential Guard**: Verify LSA Protection.
-- **AutoLogon**: Detect dangerous convenience configurations.
-- **PowerShell Policy**: Audit execution policies.
+### System Diagnostics
+To support operational continuity in multi-monitor field setups, SentinelField includes a specialized utility for the **Windows Graphics Driver Configuration**. This feature clears corrupted configuration caches in the system registry to resolve display resolution anomalies without requiring full system re-imaging.
 
-### 3. Network Sentry
-- **Low-Level Port Audit**: Direct `iphlpapi.dll` calls to map listening ports to PIDs.
-- **Connection Filter**: See exactly what process is talking to the outside world.
+## Security Architecture
 
-### 4. Resolution Emergency Tool
-- **Display Driver Reset**: Clears the Windows Graphics Driver configuration cache in the Registry.
-- **Use Case**: Fixing bugged dual-monitor setups on field workstations without a reinstall.
+### Native Execution
+SentinelField is compiled as a native .NET 8 binary. It requires **no external runtime dependencies**, libraries, or internet connectivity. This "Zero-Dependency" architecture guarantees execution reliability in strictly air-gapped environments.
 
-## 🔒 Security Specifications
+### Privilege Management
+To enable deep-system auditing and registry modification, SentinelField strictly enforces **Administrator-level access** via application manifest policies. Execution is blocked unless elevated privileges are confirmed, ensuring integrity of the audit results.
 
-- **Platform**: Windows 10/11 (x64)
-- **Tech Stack**: C# .NET 8, WPF (ModernWpfUI), System.Management.Automation
-- **Dependencies**: None (Self-Contained)
-- **Privileges**: Administrator Required (Manifest-enforced)
+## Technical Specifications
 
-## 📦 Build Instructions
+- **Runtime Environment**: .NET 8.0 (Windows)
+- **UI Framework**: Windows Presentation Foundation (WPF)
+- **Deployment Format**: Self-contained, single-file `win-x64` binary
+- **Cloud Dependency**: 0% (Fully offline capable)
 
-Requirements: .NET 8 SDK
+## Build Instructions
+
+To compile SentinelField from source, the **.NET 8 SDK** is required.
+
+Execute the following commands in the solution root:
 
 ```powershell
-# Restore Dependencies
+# Restore project dependencies
 dotnet restore
 
-# Build Single-File Executable
+# Publish self-contained single-file executable
 dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
 ```
 
-*Output Location*: `bin\Release\net8.0-windows\win-x64\publish\SentinelField.exe`
-
----
-*Built for the Field. Forged in C#.*
+**Artifact Output**:
+`bin\Release\net8.0-windows\win-x64\publish\SentinelField.exe`
